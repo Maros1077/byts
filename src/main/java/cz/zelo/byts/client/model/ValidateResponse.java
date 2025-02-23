@@ -14,24 +14,27 @@ import java.util.Date;
 public class ValidateResponse {
 
     @JsonProperty(required = true)
+    private boolean active;
+
+    @JsonProperty()
     private String clientId;
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String type;
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String sub;
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private String scopes;
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private Date expiration;
 
-    @JsonProperty(required = true)
-    long expiresIn;
+    @JsonProperty()
+    Long expiresIn;
 
-    @JsonProperty(required = true)
+    @JsonProperty()
     private JsonNode metadata;
 
 }

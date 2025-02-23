@@ -4,22 +4,19 @@ import cz.exodus.jsend.network.exception.JSendClientException;
 import cz.exodus.jsend.network.model.Result;
 import cz.zelo.byts.client.IAMClient;
 import cz.zelo.byts.client.STSClient;
-import cz.zelo.byts.client.model.AuthPoint;
-import cz.zelo.byts.client.model.CreateIdentityRequest;
-import cz.zelo.byts.client.model.CreateIdentityResponse;
-import cz.zelo.byts.client.model.IdentityTag;
+import cz.zelo.byts.client.model.*;
 import cz.zelo.byts.db.entity.UserEntity;
 import cz.zelo.byts.db.repository.UserRepository;
 import cz.zelo.byts.exception.EmailIsNotAvailableException;
+import cz.zelo.byts.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -40,13 +37,40 @@ public class BytsService {
         authPoints.add(new AuthPoint("PASSWORD", password));
         Result<CreateIdentityResponse, JSendClientException> iamResponse = iamClient.createIdentity(new CreateIdentityRequest(APP_NAME, identityTags, authPoints));
         if (iamResponse.isFailure()) {
-            log.info("IAM createIdentity request failed");
-            log.info(Arrays.toString(iamResponse.getFailure().getStackTrace()));
             if (iamResponse.getFailure().getErrorDetails().getCode() == 1003) // Identity already exists
                 throw new EmailIsNotAvailableException(email);
             else throw iamResponse.getFailure();
         }
         userRepository.save(new UserEntity(null, iamResponse.getSuccess().getIdid(), new Date(), null));
+    }
+
+    public void init(String token) throws Exception {
+        if (token == null || token.isEmpty()) {
+            throw new UnauthorizedException();
+        }
+        String extractedToken = extractToken(token);
+        Result<ValidateResponse, JSendClientException> tokenResponse = stsClient.validateToken(extractedToken);
+        if (tokenResponse.isFailure()) {
+            if (tokenResponse.getFailure().getHttpStatus().value() == 401 || tokenResponse.getFailure().getHttpStatus().value() == 403)
+                throw new UnauthorizedException();
+            else throw tokenResponse.getFailure();
+        }
+        if (!tokenResponse.getSuccess().isActive() || !Objects.equals(tokenResponse.getSuccess().getClientId(), APP_NAME)) {
+            throw new UnauthorizedException();
+        }
+        UserEntity userEntity = userRepository.findByIdid(tokenResponse.getSuccess().getMetadata().get("idid").asText());
+        if (userEntity == null) {
+            throw new UnauthorizedException();
+        }
+        userEntity.setLastAccess(new Date());
+        userRepository.save(userEntity);
+    }
+
+    private String extractToken(String token) {
+        if (token.startsWith("Bearer ")) {
+            return token.substring(7);
+        }
+        return token;
     }
 
 }

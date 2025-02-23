@@ -1,18 +1,13 @@
 package cz.zelo.byts.controller;
 
-import cz.zelo.byts.exception.BytsException;
 import cz.zelo.byts.rest.RegisterRequest;
 import cz.zelo.byts.service.BytsService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import static cz.zelo.byts.controller.BytsEndpoints.MOBILE_CONTROLLER;
-import static cz.zelo.byts.controller.BytsEndpoints.REGISTER_PATH;
+import static cz.zelo.byts.controller.BytsEndpoints.*;
 
 @RestController
 @Slf4j
@@ -31,6 +26,19 @@ public class BytsController {
         } catch (Exception e) {
             log.error(e.getMessage());
             log.info("REGISTER FAILED for {}", request.getEmail());
+            throw e;
+        }
+    }
+
+    @GetMapping(INIT_PATH)
+    public void init(@RequestHeader("Authorization") String authHeader, HttpServletResponse response) throws Exception {
+        log.debug("INIT START");
+        try {
+            bytsService.init(authHeader);
+            log.info("INIT SUCCESS");
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            log.info("INIT FAILED");
             throw e;
         }
     }
